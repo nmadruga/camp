@@ -4,7 +4,7 @@ relative_path="../../../"
 curr_path=$(pwd)
 
 LOCAL_MACHINE=CGUZMAN
-if [ $BSC_MACHINE == "power" ]; then
+if [ "$BSC_MACHINE" == "power" ]; then
   module load GCC/7.3.0-2.30
   module load OpenMPI/3.1.0-GCC-7.3.0-2.30
   module load JasPer/1.900.1-foss-2018b
@@ -22,7 +22,7 @@ if [ $BSC_MACHINE == "power" ]; then
   export NETCDF_INCLUDE_DIR="/gpfs/projects/bsc32/software/rhel/7.5/ppc64le/POWER9/software/netCDF/4.6.1-foss-2018b/include"
   export JSON_FORTRAN_HOME=$(pwd)/$relative_path/json-fortran-6.1.0/install/jsonfortran-gnu-6.1.0
   mpifort=$(which mpifort)
-elif [ $BSC_MACHINE == "mn4" ]; then
+elif [ "$BSC_MACHINE" == "mn4" ]; then
   export JSON_FORTRAN_HOME=$(pwd)/$relative_path/json-fortran-6.1.0/install/jsonfortran-intel-6.1.0
   mpifort=$(which mpiifort)
   module load cmake
@@ -38,6 +38,7 @@ elif [ LOCAL_MACHINE==CGUZMAN ]; then
       sudo apt update
       sudo apt install -y mpi-default-dev
   fi
+  nvcc=$(which nvcc)
 else
   echo "Unknown architecture"
   exit
@@ -52,18 +53,19 @@ cd build
 
 cmake -D CMAKE_C_COMPILER=$(which mpicc) \
 -D CMAKE_BUILD_TYPE=debug \
--D CMAKE_C_FLAGS_DEBUG="-std=c99 -g -O3" \
+-D CMAKE_C_FLAGS_DEBUG="-g -O3" \
 -D CMAKE_Fortran_FLAGS_DEBUG="-g -O3" \
--D CMAKE_C_FLAGS_RELEASE="-std=c99 -O3" \
+-D CMAKE_C_FLAGS_RELEASE="-std=c99" \
 -D CMAKE_Fortran_FLAGS_RELEASE="" \
 -D CMAKE_Fortran_COMPILER=$mpifort \
--D DISABLE_TESTS=ON \
+-D CMAKE_CUDA_COMPILER=$nvcc \
+-D DISABLE_TESTS=OFF \
 -D ENABLE_DEBUG=OFF \
 -D FAILURE_DETAIL=OFF \
 -D ENABLE_MPI=ON \
 -D ENABLE_GPU=ON \
 -D ENABLE_GSL:BOOL=FALSE \
--D ENABLE_NETCDF=ON \
+-D ENABLE_NETCDF=OFF \
 ..
 
 ln -sf ../test/monarch/settings
