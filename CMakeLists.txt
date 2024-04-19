@@ -28,14 +28,13 @@ endif ()
 
 #Set all options to OFF by default due to bug on CMake 3.15
 option(ENABLE_GSL "Enable GSL library for Jacobian evaluation" OFF)
-option(ENABLE_MPI "Enable MPI parallel support" OFF)
+option(ENABLE_MPI "Enable MPI parallel support" ON)
 option(ENABLE_DEBUG "Compile debugging functions" OFF)
 option(FAILURE_DETAIL "Output conditions before and after solver failures" OFF)
-option(ENABLE_GPU "Enable use of GPUs in chemistry solving" OFF)
+option(ENABLE_GPU "Enable use of GPUs in chemistry solving" ON)
 option(ENABLE_NETCDF "Include NETCDF package" OFF)
 option(DISABLE_INSTALL_OPTIONS "" OFF)
 option(DISABLE_TESTS "" OFF)
-
 
 mark_as_advanced(FORCE ENABLE_DEBUG FAILURE_DETAIL)
 
@@ -129,6 +128,7 @@ set(SUITE_SPARSE_LIB ${SUITE_SPARSE_PATH}/lib)
 set(SUNDIALS_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../cvode-3.4-alpha/install)
 set(SUNDIALS_PATH_INCLUDE ${SUNDIALS_PATH}/include)
 set(SUNDIALS_PATH_LIB ${SUNDIALS_PATH}/lib)
+set(CUDA_INCLUDE_DIRS ${CMAKE_CUDA_COMPILER}../../include)
 
 find_path(SUITE_SPARSE_INCLUDE_DIR klu.h
   DOC "SuiteSparse include directory (must have klu.h)"
@@ -202,9 +202,9 @@ add_definitions(-DCAMP_USE_JSON)
 # GPU support
 
 if (ENABLE_GPU)
-  find_package(CUDA)
-  enable_language(CUDA)
-  add_definitions(-DCAMP_USE_GPU)
+    find_package(CUDA REQUIRED)
+    enable_language(CUDA)
+    add_definitions(-DCAMP_USE_GPU)
   if(ENABLE_MPI)
     add_definitions(-DCAMP_DEBUG_GPU)
   else()
@@ -226,7 +226,7 @@ endif()
 ######################################################################
 # copy dirs
 
-SET(USE_TESTS OFF)
+SET(USE_TESTS ON)
 
 if(USE_TESTS)
 add_custom_target(copy_data ALL ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data ${CMAKE_BINARY_DIR}/data_run)
@@ -448,9 +448,6 @@ add_library(camplib ${CAMP_LIB_SRC})
 
 target_link_libraries(camplib ${MPI_C_LIBRARIES} ${MPI_FORTRAN_LIBRARIES})
 target_link_libraries(camplib ${NETCDF_LIBS} ${SUNDIALS_LIBS} ${GSL_LIBS} ${JSON_LIB})
-if (CUDA_FOUND)
-  target_link_libraries(camplib ${CUDA_LIBRARIES})
-endif()
 
 set(MODULE_DIR "${CMAKE_BINARY_DIR}/include")
 set_target_properties(camplib PROPERTIES
@@ -460,6 +457,11 @@ set_target_properties(camplib PROPERTIES
                          SOVERSION ${PACKAGE_VERSION}
                          LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
                          Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR})
+
+if (CUDA_FOUND)
+  set_target_properties(camplib PROPERTIES CUDA_ARCHITECTURES "sm_75")
+  include_directories(${CUDA_INCLUDE_DIRS})
+endif()
 
 if(DISABLE_INSTALL_OPTIONS)
 
@@ -544,9 +546,9 @@ target_link_libraries(camp_box_model camplib)
 # test_chemistry_cb05cl_ae5
 
 add_executable(test_chemistry_cb05cl_ae5
-        test/chemistry/cb05cl_ae5/test_cb05cl_ae5.F90
-        ${CB5_EBI_SOLVER} ${CB5_KPP_SOLVER}
-        test/chemistry/cb05cl_ae5/module_BSC_CHEM_DATA.F90)
+    test/chemistry/cb05cl_ae5/test_cb05cl_ae5.F90
+    ${CB5_EBI_SOLVER} ${CB5_KPP_SOLVER}
+    test/chemistry/cb05cl_ae5/module_BSC_CHEM_DATA.F90)
 target_link_libraries(test_chemistry_cb05cl_ae5 camplib)
 
 ######################################################################
@@ -560,7 +562,7 @@ target_link_libraries(unit_test_property camplib)
 # test_jacobian
 
 add_executable(unit_test_jacobian test/unit_jacobian/test_jacobian.c)
-
+set_target_properties(unit_test_jacobian PROPERTIES CUDA_ARCHITECTURES "sm_75")
 target_link_libraries(unit_test_jacobian camplib)
 
 ######################################################################
